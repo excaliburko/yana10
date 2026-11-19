@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Яні 10 років ✨ Запрошення</title>
 <meta name="description" content="Запрошую відсвяткувати мій день народження — 29 листопада о 16:00, новий Драгон Парк на Джерельній">
 <meta name="theme-color" content="#f6e6d2">
@@ -40,7 +40,7 @@
     --gold-grad:linear-gradient(100deg,#8c4a1a 0%,#cf8536 22%,#e9a548 38%,#f8d48e 46%,#de9840 56%,#a85a22 75%,#d99a48 100%);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
+  html{-webkit-text-size-adjust:100%;touch-action:pan-x pan-y}
   body{
     min-height:100vh;
     font-family:"Montserrat",system-ui,sans-serif;
@@ -475,6 +475,22 @@
 </main>
 
 <script>
+/* без зуму: щипок, подвійний тап (iOS ігнорує user-scalable=no) і Ctrl/⌘ + колесо чи +/- */
+(() => {
+  const stop = e => e.preventDefault();
+  ['gesturestart','gesturechange','gestureend'].forEach(t => document.addEventListener(t, stop, {passive:false}));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, {passive:false});
+  let lastTap = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTap < 320 && !e.target.closest('a,button,input,textarea,select')) e.preventDefault();
+    lastTap = now;
+  }, {passive:false});
+  addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, {passive:false});
+  addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && ['+','=','-','_','0'].includes(e.key)) e.preventDefault();
+  });
+})();
 (() => {
   /* ---------------- event data ---------------- */
   const EVENT_START = new Date('2026-11-29T16:00:00+02:00'); // Київський час
