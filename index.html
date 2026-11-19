@@ -182,8 +182,7 @@
     translate:calc(var(--dx) * .055) calc(var(--dy) * .03);
     filter:drop-shadow(0 3px 8px rgba(90,40,10,.14))}
   .photo-title{translate:calc(var(--dx) * .03) calc(var(--dy) * .02)}
-  /* «Запрошую» рухається, а дата й кнопка під ним стоять спокійно */
-  .pi-art{position:relative;translate:calc(var(--dx) * .1) calc(var(--dy) * .07)}
+  /* нижній блок («Запрошую», дата, кнопка) — одним рівнем, без зсуву */
   .photo::after{ /* soft moving sheen */
     content:"";position:absolute;inset:-40% -60%;
     background:linear-gradient(115deg,transparent 44%,rgba(255,248,228,.16) 50%,transparent 56%);
