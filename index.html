@@ -327,7 +327,7 @@
     opacity:0;transition:opacity .6s ease}
   .dream-stage.ready canvas{opacity:1}
   .dream-stage::before{content:"";position:absolute;left:12%;right:12%;top:14%;bottom:10%;border-radius:50%;
-    background:radial-gradient(closest-side,rgba(190,225,180,.6),rgba(255,214,150,.25) 60%,rgba(255,214,150,0));filter:blur(6px);
+    background:radial-gradient(closest-side,rgba(222,232,140,.65),rgba(255,214,150,.25) 60%,rgba(255,214,150,0));filter:blur(6px);
     opacity:0;transform:scale(.4);transition:opacity 1s ease .15s,transform 1.3s cubic-bezier(.2,.9,.25,1.15) .1s}
   .dream-stage.ready::before{opacity:1;transform:none}
   .dream-stage.no3d{display:none}
@@ -825,7 +825,7 @@
     catch(_) { stage.classList.add('no3d'); return; }
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     renderer.outputEncoding = T.sRGBEncoding;
-    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
 
     const scene = new T.Scene();
     const cam = new T.PerspectiveCamera(30, 4/3, .1, 100);
@@ -861,51 +861,75 @@
     const rr = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
 
     const W = 3.0, D = 2.1, H = .1, LH = .055;
-    const alu  = new T.MeshStandardMaterial({color:'#a9d2ae', metalness:.72, roughness:.3});   // зелений «Neo»
+    const alu  = new T.MeshStandardMaterial({color:'#b9c832', metalness:.18, roughness:.5});  // лаймово-жовтий «Neo»
     const dark = new T.MeshStandardMaterial({color:'#1d1714', metalness:.2, roughness:.55});
 
     const laptop = new T.Group(); scene.add(laptop);
-    const base = new T.Mesh(slab(W, D, H, .16, .03), alu); laptop.add(base);
+    const base = new T.Mesh(slab(W, D, H, .2, .035), alu); laptop.add(base);
 
     // клавіатура
     const keys = tex(1024, 400, (g, w, h) => {
-      const rows = [14,14,14,13,12,10], gap = 10, kh = (h - gap*7)/6;
-      rows.forEach((n, ri) => {
-        const y = gap + ri*(kh+gap), kw = (w - gap*(n+1))/n;
-        for (let i = 0; i < n; i++){
-          let x = gap + i*(kw+gap), ww = kw;
-          if (ri === 5 && i === 4){ ww = kw*3 + gap*2; }          // пробіл
-          if (ri === 5 && i > 4 && i < 7) continue;
-          if (ri === 5 && i >= 7) x = gap + (i-2)*(kw+gap) + (kw*2+gap*2);
-          g.fillStyle = '#1e2a22'; rr(g, x, y, ww, kh, 9); g.fill();
-          g.fillStyle = 'rgba(255,255,255,.05)'; rr(g, x+2, y+2, ww-4, kh*.45, 7); g.fill();
-        }
+      const R = [   // [висота, [ширини клавіш], [підписи]]
+        [.6, [1.5,1,1,1,1,1,1,1,1,1,1,1,1,1.5], []],
+        [1, [1,1,1,1,1,1,1,1,1,1,1,1,1,2], ['~','1','2','3','4','5','6','7','8','9','0','-','=','']],
+        [1, [1.5,1,1,1,1,1,1,1,1,1,1,1,1,1.5], ['','Q','W','E','R','T','Y','U','I','O','P','[',']','\\']],
+        [1, [1.8,1,1,1,1,1,1,1,1,1,1,1,2.2], ['','A','S','D','F','G','H','J','K','L',';',"'",'']],
+        [1, [2.3,1,1,1,1,1,1,1,1,1,1,2.7], ['','Z','X','C','V','B','N','M',',','.','/','']],
+        [1, [1,1,1,1.25,5.5,1.25,1,1,1,1], []],
+      ];
+      const gap = 9, unitsH = R.reduce((a, r) => a + r[0], 0), kh = (h - gap*(R.length+1)) / unitsH;
+      let y = gap;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      R.forEach(([hh, ws, lab]) => {
+        const sum = ws.reduce((a, b) => a + b, 0), u = (w - gap*(ws.length+1)) / sum, kH = kh*hh;
+        let x = gap;
+        ws.forEach((kw, i) => {
+          const ww = kw*u;
+          g.fillStyle = 'rgba(110,122,20,.6)'; rr(g, x, y+2, ww, kH, 8); g.fill();          // тінь-обідок
+          const kg = g.createLinearGradient(0, y, 0, y+kH); kg.addColorStop(0, '#e3ec86'); kg.addColorStop(1, '#d2dd62');
+          g.fillStyle = kg; rr(g, x, y, ww, kH-1, 8); g.fill();
+          if (lab[i]){ g.fillStyle = 'rgba(95,100,45,.75)'; g.font = '500 ' + Math.round(kH*.34) + 'px Montserrat, sans-serif'; g.fillText(lab[i], x+ww/2, y+kH*.52); }
+          x += ww + gap;
+        });
+        y += kH + gap;
       });
     });
     const kb = new T.Mesh(new T.PlaneGeometry(2.6, 1.0), new T.MeshStandardMaterial({map:keys, transparent:true, roughness:.6, metalness:.1}));
     kb.rotation.x = -Math.PI/2; kb.position.set(0, H + .002, -.32); laptop.add(kb);
-    const pad = new T.Mesh(slab(1.15, .68, .006, .06, .002), new T.MeshStandardMaterial({color:'#bcdcbe', metalness:.6, roughness:.42}));
+    const pad = new T.Mesh(slab(1.15, .68, .006, .06, .002), new T.MeshStandardMaterial({color:'#a9b82a', metalness:.15, roughness:.6}));
     pad.position.set(0, H - .002, .55); laptop.add(pad);
-    const hinge = new T.Mesh(new T.CylinderGeometry(.05, .05, W - .6, 24), dark);
+    const hinge = new T.Mesh(new T.CylinderGeometry(.05, .05, W - .6, 24), alu);
     hinge.rotation.z = Math.PI/2; hinge.position.set(0, H + .02, -D/2 + .05); laptop.add(hinge);
 
     // кришка з екраном
     const lid = new T.Group(); lid.position.set(0, H + .004, -D/2 + .03); laptop.add(lid);
-    const lidBody = new T.Mesh(slab(W, D - .04, LH, .16, .018), alu); lidBody.position.z = (D - .04)/2; lid.add(lidBody);
+    const lidBody = new T.Mesh(slab(W, D - .04, LH, .2, .02), alu); lidBody.position.z = (D - .04)/2; lid.add(lidBody);
     const scr = tex(1024, 704, (g, w, h) => {
-      g.fillStyle = '#0d0a09'; rr(g, 0, 0, w, h, 34); g.fill();
-      const x = 26, y = 26, iw = w - 52, ih = h - 52;
-      const bg = g.createLinearGradient(0, y, 0, y + ih);
-      bg.addColorStop(0, '#0f3328'); bg.addColorStop(.45, '#2f7a5a'); bg.addColorStop(.8, '#9cc48a'); bg.addColorStop(1, '#f3d98c');
-      g.save(); rr(g, x, y, iw, ih, 12); g.clip(); g.fillStyle = bg; g.fillRect(x, y, iw, ih);
-      [[.25,.35,.42,'rgba(140,220,170,.5)'],[.75,.55,.5,'rgba(255,215,130,.45)'],[.55,.15,.35,'rgba(90,200,190,.35)']].forEach(([cx,cy,r,c]) => {
-        const gr = g.createRadialGradient(x+iw*cx, y+ih*cy, 0, x+iw*cx, y+ih*cy, iw*r);
-        gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x, y, iw, ih);
-      });
-      g.fillStyle = 'rgba(255,246,230,.95)'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.font = 'italic 700 120px "Cormorant Garamond", Georgia, serif'; g.fillText('моя мрія', w/2, h*.46);
-      g.font = '500 34px Montserrat, sans-serif'; g.fillStyle = 'rgba(255,240,220,.8)';
-      g.fillText('✦  Я Н А  ·  1 0  ✦', w/2, h*.64);
+      g.fillStyle = '#0b0b0b'; rr(g, 0, 0, w, h, 34); g.fill();
+      const x = 24, y = 24, iw = w - 48, ih = h - 48;
+      g.save(); rr(g, x, y, iw, ih, 14); g.clip();
+      g.fillStyle = '#edf1e4'; g.fillRect(x, y, iw, ih);
+      const n = 7, cw = iw / n, P = [['#f3e33a','#7cc93a','#5fc9e8'],['#e6e24a','#a6d64a','#e9f0c0'],['#f0dc30','#4fbf4a','#58c6ea'],
+        ['#7fd04a','#3bb8d8','#bfe6f0'],['#f2de36','#5ec850','#4fc0e6'],['#ecd832','#86cf44','#cde9a0'],['#e2e44a','#6cc94c','#55c4e8']];
+      for (let i = 0; i < n; i++){
+        const cx = x + cw*i + cw*.08, ww = cw*.84, top = y + 22, bot = y + ih - 10;
+        const segs = i === 3 ? [[top, top + ih*.36], [top + ih*.4, top + ih*.62], [top + ih*.66, bot]]
+                   : i === 6 ? [[top, top + ih*.52], [top + ih*.56, bot]] : [[top, bot]];
+        segs.forEach(([a, b], k) => {
+          const gr = g.createLinearGradient(0, a, 0, b), c = P[(i + k*2) % n];
+          gr.addColorStop(0, c[0]); gr.addColorStop(.55, c[1]); gr.addColorStop(1, c[2]);
+          g.fillStyle = gr; rr(g, cx, a, ww, b - a, ww/2); g.fill();
+        });
+      }
+      g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(x, y, iw, 18);                       // рядок меню
+      g.fillStyle = 'rgba(255,255,255,.55)'; rr(g, x + iw*.16, y + ih - 52, iw*.68, 40, 12); g.fill();   // док
+      const dock = ['#2d7cf6','#34c759','#ff9f0a','#ff375f','#5e5ce6','#64d2ff','#ffd60a','#30d158','#bf5af2','#ff453a','#0a84ff','#a2845e','#ff9500','#32ade6'];
+      dock.forEach((c, i) => { g.fillStyle = c; rr(g, x + iw*.16 + 12 + i*((iw*.68 - 24)/dock.length), y + ih - 46, 28, 28, 7); g.fill(); });
+      // підпис на екрані
+      g.fillStyle = 'rgba(255,255,255,.7)'; rr(g, w/2 - 230, h*.36, 460, 150, 26); g.fill();
+      g.fillStyle = '#2f5a1e'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = 'italic 700 104px "Cormorant Garamond", Georgia, serif'; g.fillText('моя мрія', w/2, h*.36 + 66);
+      g.font = '600 26px Montserrat, sans-serif'; g.fillStyle = 'rgba(47,90,30,.75)'; g.fillText('✦  Я Н А  ·  1 0  ✦', w/2, h*.36 + 124);
       g.restore();
     });
     const screen = new T.Mesh(new T.PlaneGeometry(W - .12, D - .16),
