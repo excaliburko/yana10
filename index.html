@@ -324,10 +324,12 @@
   .dream{text-align:center}
   .dream-stage{position:relative;margin:4px -12px 0;aspect-ratio:4/3;max-height:340px}
   .dream-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;
-    opacity:0;transition:opacity .8s ease}
+    opacity:0;transition:opacity .6s ease}
   .dream-stage.ready canvas{opacity:1}
   .dream-stage::before{content:"";position:absolute;left:12%;right:12%;top:14%;bottom:10%;border-radius:50%;
-    background:radial-gradient(closest-side,rgba(255,214,150,.55),rgba(255,214,150,0));filter:blur(6px)}
+    background:radial-gradient(closest-side,rgba(190,225,180,.6),rgba(255,214,150,.25) 60%,rgba(255,214,150,0));filter:blur(6px);
+    opacity:0;transform:scale(.4);transition:opacity 1s ease .15s,transform 1.3s cubic-bezier(.2,.9,.25,1.15) .1s}
+  .dream-stage.ready::before{opacity:1;transform:none}
   .dream-stage.no3d{display:none}
   .dream-pre{margin-top:2px;font-family:"Cormorant Garamond",serif;font-size:clamp(19px,5vw,22px);font-weight:500;color:var(--ink)}
   .dream-name{margin-top:2px;font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:700;
@@ -859,7 +861,7 @@
     const rr = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
 
     const W = 3.0, D = 2.1, H = .1, LH = .055;
-    const alu  = new T.MeshStandardMaterial({color:'#e9c6a2', metalness:.9, roughness:.28});
+    const alu  = new T.MeshStandardMaterial({color:'#a9d2ae', metalness:.72, roughness:.3});   // зелений «Neo»
     const dark = new T.MeshStandardMaterial({color:'#1d1714', metalness:.2, roughness:.55});
 
     const laptop = new T.Group(); scene.add(laptop);
@@ -875,14 +877,14 @@
           if (ri === 5 && i === 4){ ww = kw*3 + gap*2; }          // пробіл
           if (ri === 5 && i > 4 && i < 7) continue;
           if (ri === 5 && i >= 7) x = gap + (i-2)*(kw+gap) + (kw*2+gap*2);
-          g.fillStyle = '#231b17'; rr(g, x, y, ww, kh, 9); g.fill();
+          g.fillStyle = '#1e2a22'; rr(g, x, y, ww, kh, 9); g.fill();
           g.fillStyle = 'rgba(255,255,255,.05)'; rr(g, x+2, y+2, ww-4, kh*.45, 7); g.fill();
         }
       });
     });
     const kb = new T.Mesh(new T.PlaneGeometry(2.6, 1.0), new T.MeshStandardMaterial({map:keys, transparent:true, roughness:.6, metalness:.1}));
     kb.rotation.x = -Math.PI/2; kb.position.set(0, H + .002, -.32); laptop.add(kb);
-    const pad = new T.Mesh(slab(1.15, .68, .006, .06, .002), new T.MeshStandardMaterial({color:'#dcbc9c', metalness:.75, roughness:.42}));
+    const pad = new T.Mesh(slab(1.15, .68, .006, .06, .002), new T.MeshStandardMaterial({color:'#bcdcbe', metalness:.6, roughness:.42}));
     pad.position.set(0, H - .002, .55); laptop.add(pad);
     const hinge = new T.Mesh(new T.CylinderGeometry(.05, .05, W - .6, 24), dark);
     hinge.rotation.z = Math.PI/2; hinge.position.set(0, H + .02, -D/2 + .05); laptop.add(hinge);
@@ -894,9 +896,9 @@
       g.fillStyle = '#0d0a09'; rr(g, 0, 0, w, h, 34); g.fill();
       const x = 26, y = 26, iw = w - 52, ih = h - 52;
       const bg = g.createLinearGradient(0, y, 0, y + ih);
-      bg.addColorStop(0, '#2a1240'); bg.addColorStop(.45, '#8a2f3a'); bg.addColorStop(.8, '#e0782e'); bg.addColorStop(1, '#ffcf7a');
+      bg.addColorStop(0, '#0f3328'); bg.addColorStop(.45, '#2f7a5a'); bg.addColorStop(.8, '#9cc48a'); bg.addColorStop(1, '#f3d98c');
       g.save(); rr(g, x, y, iw, ih, 12); g.clip(); g.fillStyle = bg; g.fillRect(x, y, iw, ih);
-      [[.25,.35,.42,'rgba(255,150,90,.55)'],[.75,.55,.5,'rgba(255,210,120,.45)'],[.55,.15,.35,'rgba(190,90,200,.35)']].forEach(([cx,cy,r,c]) => {
+      [[.25,.35,.42,'rgba(140,220,170,.5)'],[.75,.55,.5,'rgba(255,215,130,.45)'],[.55,.15,.35,'rgba(90,200,190,.35)']].forEach(([cx,cy,r,c]) => {
         const gr = g.createRadialGradient(x+iw*cx, y+ih*cy, 0, x+iw*cx, y+ih*cy, iw*r);
         gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x, y, iw, ih);
       });
@@ -927,15 +929,16 @@
     let visible = false, appearAt = 0, yaw = -.5, pitch = 0;
     new IntersectionObserver(es => {
       visible = es[0].isIntersecting;
-      if (visible && !appearAt && es[0].intersectionRatio > .35) appearAt = performance.now();
+      if (visible && !appearAt && es[0].intersectionRatio > .3){ appearAt = performance.now(); stage.classList.add('ready'); }
     }, {threshold:[0, .35, .6]}).observe(stage);
     const ease = t => 1 - Math.pow(1 - t, 3);
-    stage.classList.add('ready');
+    const back = t => { const c = 1.6; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 
     (function loop(now){
       requestAnimationFrame(loop);
       if (!visible || document.hidden) return;
-      const a = appearAt ? (reduced ? 1 : Math.min(1, (now - appearAt) / 2200)) : 0, e = ease(a);
+      const a = appearAt ? (reduced ? 1 : Math.min(1, (now - appearAt) / 2000)) : 0, e = ease(a);
+      const g = appearAt ? (reduced ? 1 : Math.min(1, (now - appearAt) / 1300)) : 0;   // ріст
       // поворот від скролу: де картка відносно центру екрана
       const r = stage.getBoundingClientRect();
       const p = Math.max(-1, Math.min(1, (r.top + r.height/2 - innerHeight/2) / (innerHeight/2)));
@@ -945,7 +948,8 @@
       laptop.rotation.set(pitch, yaw, 0);
       shadow.rotation.z = -yaw;
       laptop.position.y = reduced ? 0 : Math.sin(now / 900) * .05;
-      laptop.scale.setScalar(.75 + .25 * e);
+      const k = .08 + .92 * back(g);
+      laptop.scale.setScalar(k); shadow.scale.setScalar(Math.max(.01, k));
       lid.rotation.x = -e * 1.86;                                  // кришка відкривається
       renderer.render(scene, cam);
     })(performance.now());
