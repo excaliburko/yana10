@@ -320,6 +320,20 @@
   }
   .btn svg{width:18px;height:18px;flex:none}
 
+  /* велика мрія — 3D-ноутбук */
+  .dream{text-align:center}
+  .dream-stage{position:relative;margin:4px -12px 0;aspect-ratio:4/3;max-height:340px}
+  .dream-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y;
+    opacity:0;transition:opacity .8s ease}
+  .dream-stage.ready canvas{opacity:1}
+  .dream-stage::before{content:"";position:absolute;left:12%;right:12%;top:14%;bottom:10%;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(255,214,150,.55),rgba(255,214,150,0));filter:blur(6px)}
+  .dream-stage.no3d{display:none}
+  .dream-pre{margin-top:2px;font-family:"Cormorant Garamond",serif;font-size:clamp(19px,5vw,22px);font-weight:500;color:var(--ink)}
+  .dream-name{margin-top:2px;font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:700;
+    font-size:clamp(34px,9.5vw,44px);line-height:1.1;padding:0 .1em}
+  .dream-text{max-width:300px;margin:10px auto 0;font-size:14px;line-height:1.55;color:var(--ink-soft)}
+
   /* wishlist */
   .wish{text-align:center}
   .wish-icon{width:40px;height:40px;display:block;margin:12px auto 0}
@@ -445,6 +459,14 @@
       <div><b id="cd-m">–</b><span>хвилин</span></div>
       <div><b id="cd-s">–</b><span>секунд</span></div>
     </div>
+  </section>
+
+  <section class="card reveal dream" aria-label="Велика мрія">
+    <p class="label">велика мрія</p>
+    <div class="dream-stage" id="dreamStage"><canvas id="dreamCanvas" aria-hidden="true"></canvas></div>
+    <p class="dream-pre">Я збираю на свою велику мрію&nbsp;—</p>
+    <p class="dream-name gold">MacBook Neo</p>
+    <p class="dream-text">Якщо захочеш долучитися, конвертик у&nbsp;мою скарбничку мрії буде найкращим подарунком&nbsp;✨</p>
   </section>
 
   <section class="card reveal wish" aria-label="Список бажань">
@@ -775,6 +797,159 @@
     document.body.classList.add('opened');
     scrollTo(0,0);
   });
+})();
+</script>
+<script>
+/* ---------- 3D-ноутбук: з'являється з поворотом, далі крутиться від скролу ---------- */
+(() => {
+  const stage = document.getElementById('dreamStage'), cv = document.getElementById('dreamCanvas');
+  if (!stage) return;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pre = new IntersectionObserver(es => {
+    if (!es[0].isIntersecting) return;
+    pre.disconnect();
+    if (window.THREE) return init();
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    sc.onload = init; sc.onerror = () => stage.classList.add('no3d');
+    document.head.appendChild(sc);
+  }, {rootMargin:'700px 0px'});
+  pre.observe(stage);
+
+  function init(){
+    const T = THREE;
+    let renderer;
+    try { renderer = new T.WebGLRenderer({canvas:cv, antialias:true, alpha:true}); }
+    catch(_) { stage.classList.add('no3d'); return; }
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.outputEncoding = T.sRGBEncoding;
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+
+    const scene = new T.Scene();
+    const cam = new T.PerspectiveCamera(30, 4/3, .1, 100);
+
+    /* теплі «студійні» відблиски для металу */
+    const pm = new T.PMREMGenerator(renderer), env = new T.Scene();
+    const skyG = new T.SphereGeometry(20, 32, 16), P = skyG.attributes.position, cols = [];
+    const cTop = new T.Color('#fff4e2'), cBot = new T.Color('#7a3f1c');
+    for (let i = 0; i < P.count; i++){ const t = (P.getY(i)/20 + 1)/2, c = cBot.clone().lerp(cTop, Math.pow(t, .7)); cols.push(c.r, c.g, c.b); }
+    skyG.setAttribute('color', new T.Float32BufferAttribute(cols, 3));
+    env.add(new T.Mesh(skyG, new T.MeshBasicMaterial({side:T.BackSide, vertexColors:true})));
+    [[16,5,0,13,5,'#ffffff'],[7,12,-15,4,3,'#ffe0b0'],[7,12,15,2,-5,'#ffd39a'],[10,3,0,1,-16,'#fff2dc']].forEach(([w,h,x,y,z,c]) => {
+      const m = new T.Mesh(new T.PlaneGeometry(w,h), new T.MeshBasicMaterial({color:c, side:T.DoubleSide}));
+      m.position.set(x,y,z); m.lookAt(0,0,0); env.add(m);
+    });
+    scene.environment = pm.fromScene(env, .03).texture;
+    scene.add(new T.HemisphereLight('#fff4e6', '#6b3e22', .5));
+    const sun = new T.DirectionalLight('#fff0d8', .9); sun.position.set(3, 6, 4); scene.add(sun);
+
+    /* заокруглена «плитка» товщиною h (вісь y), w × d у площині xz */
+    function slab(w, d, h, r, b){
+      const s = new T.Shape(), x = -w/2, y = -d/2;
+      s.moveTo(x+r, y); s.lineTo(x+w-r, y); s.quadraticCurveTo(x+w, y, x+w, y+r);
+      s.lineTo(x+w, y+d-r); s.quadraticCurveTo(x+w, y+d, x+w-r, y+d);
+      s.lineTo(x+r, y+d); s.quadraticCurveTo(x, y+d, x, y+d-r);
+      s.lineTo(x, y+r); s.quadraticCurveTo(x, y, x+r, y);
+      const g = new T.ExtrudeGeometry(s, {depth:h-2*b, bevelEnabled:true, bevelThickness:b, bevelSize:b, bevelSegments:5, curveSegments:12});
+      g.rotateX(-Math.PI/2); g.translate(0, b, 0);
+      return g;
+    }
+    const tex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; };
+    const rr = (g, x, y, w, h, r) => { g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
+
+    const W = 3.0, D = 2.1, H = .1, LH = .055;
+    const alu  = new T.MeshStandardMaterial({color:'#e9c6a2', metalness:.9, roughness:.28});
+    const dark = new T.MeshStandardMaterial({color:'#1d1714', metalness:.2, roughness:.55});
+
+    const laptop = new T.Group(); scene.add(laptop);
+    const base = new T.Mesh(slab(W, D, H, .16, .03), alu); laptop.add(base);
+
+    // клавіатура
+    const keys = tex(1024, 400, (g, w, h) => {
+      const rows = [14,14,14,13,12,10], gap = 10, kh = (h - gap*7)/6;
+      rows.forEach((n, ri) => {
+        const y = gap + ri*(kh+gap), kw = (w - gap*(n+1))/n;
+        for (let i = 0; i < n; i++){
+          let x = gap + i*(kw+gap), ww = kw;
+          if (ri === 5 && i === 4){ ww = kw*3 + gap*2; }          // пробіл
+          if (ri === 5 && i > 4 && i < 7) continue;
+          if (ri === 5 && i >= 7) x = gap + (i-2)*(kw+gap) + (kw*2+gap*2);
+          g.fillStyle = '#231b17'; rr(g, x, y, ww, kh, 9); g.fill();
+          g.fillStyle = 'rgba(255,255,255,.05)'; rr(g, x+2, y+2, ww-4, kh*.45, 7); g.fill();
+        }
+      });
+    });
+    const kb = new T.Mesh(new T.PlaneGeometry(2.6, 1.0), new T.MeshStandardMaterial({map:keys, transparent:true, roughness:.6, metalness:.1}));
+    kb.rotation.x = -Math.PI/2; kb.position.set(0, H + .002, -.32); laptop.add(kb);
+    const pad = new T.Mesh(slab(1.15, .68, .006, .06, .002), new T.MeshStandardMaterial({color:'#dcbc9c', metalness:.75, roughness:.42}));
+    pad.position.set(0, H - .002, .55); laptop.add(pad);
+    const hinge = new T.Mesh(new T.CylinderGeometry(.05, .05, W - .6, 24), dark);
+    hinge.rotation.z = Math.PI/2; hinge.position.set(0, H + .02, -D/2 + .05); laptop.add(hinge);
+
+    // кришка з екраном
+    const lid = new T.Group(); lid.position.set(0, H + .004, -D/2 + .03); laptop.add(lid);
+    const lidBody = new T.Mesh(slab(W, D - .04, LH, .16, .018), alu); lidBody.position.z = (D - .04)/2; lid.add(lidBody);
+    const scr = tex(1024, 704, (g, w, h) => {
+      g.fillStyle = '#0d0a09'; rr(g, 0, 0, w, h, 34); g.fill();
+      const x = 26, y = 26, iw = w - 52, ih = h - 52;
+      const bg = g.createLinearGradient(0, y, 0, y + ih);
+      bg.addColorStop(0, '#2a1240'); bg.addColorStop(.45, '#8a2f3a'); bg.addColorStop(.8, '#e0782e'); bg.addColorStop(1, '#ffcf7a');
+      g.save(); rr(g, x, y, iw, ih, 12); g.clip(); g.fillStyle = bg; g.fillRect(x, y, iw, ih);
+      [[.25,.35,.42,'rgba(255,150,90,.55)'],[.75,.55,.5,'rgba(255,210,120,.45)'],[.55,.15,.35,'rgba(190,90,200,.35)']].forEach(([cx,cy,r,c]) => {
+        const gr = g.createRadialGradient(x+iw*cx, y+ih*cy, 0, x+iw*cx, y+ih*cy, iw*r);
+        gr.addColorStop(0, c); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x, y, iw, ih);
+      });
+      g.fillStyle = 'rgba(255,246,230,.95)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = 'italic 700 120px "Cormorant Garamond", Georgia, serif'; g.fillText('моя мрія', w/2, h*.46);
+      g.font = '500 34px Montserrat, sans-serif'; g.fillStyle = 'rgba(255,240,220,.8)';
+      g.fillText('✦  Я Н А  ·  1 0  ✦', w/2, h*.64);
+      g.restore();
+    });
+    const screen = new T.Mesh(new T.PlaneGeometry(W - .12, D - .16),
+      new T.MeshStandardMaterial({color:'#000', emissive:'#fff', emissiveMap:scr, roughness:.12, metalness:0}));
+    screen.rotation.x = Math.PI/2; screen.position.set(0, -.002, (D - .04)/2); lid.add(screen);
+
+    // м'яка тінь під ноутбуком
+    const sh = tex(256, 256, (g, w, h) => { const gr = g.createRadialGradient(w/2, h/2, 0, w/2, h/2, w/2);
+      gr.addColorStop(0, 'rgba(90,40,10,.42)'); gr.addColorStop(.6, 'rgba(90,40,10,.14)'); gr.addColorStop(1, 'rgba(90,40,10,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+    const shadow = new T.Mesh(new T.PlaneGeometry(5, 3.6), new T.MeshBasicMaterial({map:sh, transparent:true, depthWrite:false}));
+    shadow.rotation.x = -Math.PI/2; shadow.position.y = -.03; scene.add(shadow);
+
+    function size(){
+      const r = stage.getBoundingClientRect(), a = r.width / r.height;
+      renderer.setSize(r.width, r.height, false);
+      cam.aspect = a; cam.position.set(0, 2.4, 7.0 / Math.min(1, a / 1.25)); cam.lookAt(0, .8, 0); cam.updateProjectionMatrix();
+    }
+    size(); new ResizeObserver(size).observe(stage);
+
+    let visible = false, appearAt = 0, yaw = -.5, pitch = 0;
+    new IntersectionObserver(es => {
+      visible = es[0].isIntersecting;
+      if (visible && !appearAt && es[0].intersectionRatio > .35) appearAt = performance.now();
+    }, {threshold:[0, .35, .6]}).observe(stage);
+    const ease = t => 1 - Math.pow(1 - t, 3);
+    stage.classList.add('ready');
+
+    (function loop(now){
+      requestAnimationFrame(loop);
+      if (!visible || document.hidden) return;
+      const a = appearAt ? (reduced ? 1 : Math.min(1, (now - appearAt) / 2200)) : 0, e = ease(a);
+      // поворот від скролу: де картка відносно центру екрана
+      const r = stage.getBoundingClientRect();
+      const p = Math.max(-1, Math.min(1, (r.top + r.height/2 - innerHeight/2) / (innerHeight/2)));
+      const tYaw = -.35 + p * 1.5 - (1 - e) * Math.PI * 1.6;    // з'являється з обертом
+      yaw += (tYaw - yaw) * (a < 1 ? .25 : .1);
+      pitch += (p * .18 - pitch) * .1;
+      laptop.rotation.set(pitch, yaw, 0);
+      shadow.rotation.z = -yaw;
+      laptop.position.y = reduced ? 0 : Math.sin(now / 900) * .05;
+      laptop.scale.setScalar(.75 + .25 * e);
+      lid.rotation.x = -e * 1.86;                                  // кришка відкривається
+      renderer.render(scene, cam);
+    })(performance.now());
+  }
 })();
 </script>
 </body>
